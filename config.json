@@ -1,27 +1,27 @@
 {
-	"name": "ClassNameHere",
+	"name": "Tremendous",
 
-	"namespace": "Stanford\\ClassNameHere",
+	"namespace": "Stanford\\Tremendous",
 
-	"description": "A template for a REDCap External Module",
+	"description": "Requests Tremendous to send out gift cards",
 
 	"documentation": "README.md",
 
+    "framework-version": 9,
+
 	"authors": [
 		{
-			"name": "Andrew Martin",
-			"email": "andy123@stanford.edu",
+			"name": "Lee Ann Yasukawa",
+			"email": "yasukawa@stanford.edu",
 			"institution": "Stanford University"
 		}
 	],
 
 	"permissions": [
-		"redcap_module_system_enable",
-		"redcap_module_project_enable",
-		"redcap_module_save_configuration"
-	],
-	
-	"enable-every-page-hooks-on-system-pages": false,	
+        "redcap_save_record"
+    ],
+
+	"enable-every-page-hooks-on-system-pages": false,
 
 	"links": {
 		"project": [
@@ -42,9 +42,128 @@
 			"name": "<b>Enable Debug Logging</b><br><i>(optional)</i> Requires installation and configuration of emLogger",
 			"required": false,
 			"type": "checkbox"
-		}
-	],
-
+		},
+        {
+            "key": "tremendous-api-token",
+            "name": "API Token which is valid for the Tremendous Project<br>Sandbox tokens start with TEST_ and production tokens start with PROD_",
+            "required": false,
+            "type": "text"
+        },
+        {
+            "key": "tremendous-funding-id",
+            "name": "Tremendous Funding ID<br>This value can be extracted from the Tremendous website",
+            "required": false,
+            "type": "text"
+        },
+        {
+            "key": "rewards",
+            "name": "<h6><span class='text-lg badge badge-lg badge-success'>Gift Card Instance</span></h6>Each of the fields below configure a single gift card event from this project.",
+            "type": "sub_settings",
+            "repeatable": true,
+            "sub_settings": [
+                {
+                    "key": "configs",
+                    "name": "<h6 style='color:red;text-align:center'>Reward Settings</h6>The following fields are used to determine when a participant is eligible for an award and how to handle the notification.</li></ul>",
+                    "required": false,
+                    "type": "descriptive"
+                },
+                {
+                    "key": "event-id",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Event ID</span></h6>Specify the event where the the following fields resides. Cannot be repeating event.",
+                    "required": true,
+                    "type": "event-list"
+                },
+                {
+                    "key": "reward-title",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Title</span></h6>A descriptive name for this reward<br><i>(e.g. Baseline Complete)",
+                    "required": true,
+                    "type": "text"
+                },
+                {
+                    "key": "reward-logic",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Logic</span></h6>A gift card will be automatically awarded when this logic is true AND the status field is empty",
+                    "required": true,
+                    "type": "text"
+                },
+                {
+                    "key": "reward-message",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Message Field</span></h6>Specify the field where reward messages will be stored",
+                    "required": true,
+                    "type": "field-list"
+                },
+                {
+                    "key": "reward-status",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Status Field</span></h6>Specify the field where the reward status received from Tremendous will be stored",
+                    "required": true,
+                    "type": "field-list"
+                },
+                {
+                    "key": "reward-timestamp",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Timestamp when reward was requested</span></h6>This field will automatically be filled in based on when the Tremendous order request was sent.",
+                    "required": true,
+                    "type": "field-list"
+                },
+                {
+                    "key": "use-campaign",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Use a Tremendous Campaign</span></h6>When checked, the list of available gift cards will be retrieved from the Campaign",
+                    "required": false,
+                    "type": "checkbox"
+                },
+                {
+                    "key": "campaign-name",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Name of Campaign</span></h6>When the Use Campaign checkbox is checked, there must be a Campaign name entered so the available GC can be retrieved",
+                    "required": false,
+                    "type": "text"
+                },
+                {
+                    "key": "brand-identifiers",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>List of Brand Identifiers</span></h6>Comma-seperated list of brand identifiers. Must be filled in when Use Campaign is not checked.",
+                    "required": false,
+                    "type": "text"
+                },
+                {
+                    "key": "reward-amount",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Reward Amount</span></h6>Specify the dollar amount (number only) for this gift card (ex. 20 for twenty dollars).<br>This is the amount that will be requested from Tremendous",
+                    "required": true,
+                    "type": "text"
+                },
+                {
+                    "key": "communication-type",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Communication Type</span></h6>Select SMS or Email on the method the recipient will receive their reward.",
+                    "required": true,
+                    "type": "dropdown",
+                    "choices": [
+                        {
+                            "value": "PHONE",
+                            "name": "SMS"
+                        },
+                        {
+                            "value": "EMAIL",
+                            "name": "Email"
+                        }
+                    ]
+                },
+                {
+                    "key": "demo",
+                    "name": "<h6 style='color:red;text-align:center'>Demographics Information</h6>The email address or phone number and name must be in the same event.",
+                    "required": false,
+                    "type": "descriptive"
+                },
+                {
+                    "key": "communication-field",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Email or Phone Number Field</span></h6>Enter the email address or phone number field from this project where the reward will be sent. This field does not need to be in the same event as the other gift card fields but it cannot be on a repeating form or in a repeating event or in multiple events.",
+                    "required": true,
+                    "type": "field-list"
+                },
+                {
+                    "key": "recipient-name",
+                    "name": "<h6><span class='text-lg badge badge-lg badge-success'>Recipient Name Field</span></h6>Select the field which holds the recipient name from this project where the reward will be sent. This field does not need to be in the same event as the other gift card fields but it cannot be on a repeating form or in a repeating event or in multiple events.",
+                    "required": true,
+                    "type": "field-list"
+                }
+            ]
+        }
+    ],
 
 	"system-settings": [
 		{
@@ -52,8 +171,14 @@
 			"name": "<b>Enable Debug Logging (system-wide)</b><i>(optional)</i> Requires installation and configuration of emLogger",
 			"required": false,
 			"type": "checkbox"
-		}
-	],
+		},
+        {
+            "key": "tremendous-url",
+            "name": "URL to point to Tremendous<br>The standard URls are https://testflight.tremendous.com for Sandbox testing or https://www.tremendous.com for Production",
+            "required": false,
+            "type": "text"
+        }
+    ],
 
 	"compatibility": {
 		"php-version-min": "",

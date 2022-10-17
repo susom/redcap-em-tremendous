@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="8"
+>
+    <projectFiles>
+        <directory name="." />
+    </projectFiles>
+    <globals>
+        <!-- From REDCap Core -->
+        <var name="SUPER_USER" type="string" />
+        <var name="ACCESS_CONTROL_CENTER" type="bool" />
+        <var name="UI_ID" type="integer" />
+        <var name="PAGE" type="string" />
+        <var name="auth_meth_global" type="string" />
+        <var name="lang" type="array" />
+        <var name="app_title" type="string" />
+        <var name="external_modules_project_custom_text" type="string" />
+        <var name="user_firstname" type="string" />
+        <var name="user_lastname" type="string" />
+        <var name="project_contact_email" type="string" />
+        <var name="user_email" type="string" />
+        <var name="send_emails_admin_tasks" type="string" />
+
+        <!-- From the EM Framework (not really globals, but this works for variables in scope during require calls as well) -->
+        <var name="project_id" type="string" />
+        <var name="prefix" type="string" />
+        <var name="version" type="string" />
+        <var name="config" type="array" />
+        <var name="module" type="Stanford\Tremendous\Tremendous" />
+        <var name="arguments" type="array" />
+    </globals>
+    <issueHandlers>
+        <InvalidGlobal errorLevel="suppress" />
+        <RedundantCondition errorLevel="suppress" />
+    </issueHandlers>
+</psalm>
