@@ -35,18 +35,21 @@ class Tremendous extends \ExternalModules\AbstractExternalModule {
 
                 try {
                     $status = true;
+                    //irvins TODO ?
                     //[$status, $message] = $reward->verifyConfig();
                     if ($status) {
                         $eligible = $reward->checkRewardStatus();
-                    }
-                    if ($eligible) {
-                        $reward->processReward();
+
+                        if ($eligible) {
+                            $reward->processReward();
+                        }
                     }
                 } catch (Exception $ex) {
                     $this->emError("Exception when processing reward for project $project_id", $ex->getMessage());
                 }
 
             }
+
         }
     }
 

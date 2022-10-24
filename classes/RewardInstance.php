@@ -62,6 +62,7 @@ class RewardInstance
 
         $jsonResults = REDCap::getData($params);
         $results = json_decode($jsonResults, true);
+        //irvins check if results empty?
         $this->communication = $results[0][$commField];
         $this->name = $results[0][$nameField];
 
@@ -124,6 +125,9 @@ class RewardInstance
                     if (in_array($commForm, $forms)) {
                         if (empty($event_id)) {
                             $event_id = $eid;
+
+                            //irvins break loop?
+                            break;
                         }
                     }
                 }
@@ -195,6 +199,7 @@ class RewardInstance
 
         $this->campaignId = '';
         // Retrieve the list of campaigns and return the one that matches our campaign name
+
         $header = array(
             "Authorization" => "Bearer " . $this->apiToken,
             "Content-type" => "application/json"
