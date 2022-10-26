@@ -14,12 +14,14 @@ class RewardInstance
     public string $record_id, $repeat_instrument, $title, $logic;
     public string $gc_message_field;
     public string $campaignId, $name, $statusValue;
-    public string $createOrderURN, $listCampaigns, $tremendous_url, $fundingSource, $apiToken;
+    public string $createOrderURN, $listCampaignsURN, $tremendous_url, $fundingSource, $apiToken;
     public string $whichCommunication;
     public bool $useCampaign;
     public string $communication, $campaignName, $gc_status_field, $gc_timestamp_field;
 
     /**
+     * Set the parameters needed to determine if a reward is needed or not and if so, how to process it
+     *
      * @param mixed $module
      * @param int $pid
      * @param string $record_id
@@ -45,7 +47,6 @@ class RewardInstance
         $this->amount = $config['reward-amount'];
 
         // These are reward parameters which specify the fields which holds the participant info.
-        // We need to retrieve the actual data.
         $this->whichCommunication = $config['communication-type'];
         $commField = $config['communication-field'];
         $nameField = $config['recipient-name'];
@@ -60,11 +61,14 @@ class RewardInstance
             $params['events'] = array($demoEventId);
         }
 
+        // We need to retrieve the actual data from the fields which store the fieldname.
         $jsonResults = REDCap::getData($params);
-        $results = json_decode($jsonResults, true);
         //irvins check if results empty?
-        $this->communication = $results[0][$commField];
-        $this->name = $results[0][$nameField];
+        if (!empty($jsonResults)) {
+            $results = json_decode($jsonResults, true);
+            $this->communication = $results[0][$commField];
+            $this->name = $results[0][$nameField];
+        }
 
         // These fields will be filled in with the results of the order request.
         $this->gc_status_field      = $config['reward-status'];
@@ -77,6 +81,8 @@ class RewardInstance
             "events"            => $this->event_id,
             "fields"            => array($this->gc_status_field)
         );
+
+        // Retrieve the status field to see if this record has already received a reward for this config
         $jsonResults = REDCap::getData($params);
         $results = json_decode($jsonResults, true);
         if (!empty($results)) {
@@ -85,10 +91,11 @@ class RewardInstance
             $this->statusValue = '';
         }
 
-        // This should go into system config
+        // This should go into system config or can leave here if projects would like
+        // to test in Sandbox before moving to production
         $this->tremendous_url = $this->module->getSystemSetting("tremendous-url");
 
-        // These should go into project config
+        // These should go into project config - these are Tremendous specific values
         $this->fundingSource    = $this->module->getProjectSetting("tremendous-funding-id");
         $this->apiToken         = $this->module->getProjectSetting("tremendous-api-token");
         $this->useCampaign      = $config["use-campaign"];
@@ -102,7 +109,7 @@ class RewardInstance
 
         // These can stay here
         $this->createOrderURN   = '/api/v2/orders';
-        $this->listCampaigns    = '/api/v2/campaigns';
+        $this->listCampaignsURN    = '/api/v2/campaigns';
     }
 
     /**
@@ -147,12 +154,11 @@ class RewardInstance
      */
     function checkRewardStatus() {
 
-        $this->module->emDebug("In checkRewardStatus");
         $status = false;
         // Check to see if the reward status field is blank.  If not, a reward was already sent so don't process.
         if (empty($this->statusValue)) {
 
-            $this->module->emDebug("In status field " . $this->statusValue);
+            $this->module->emDebug("GC Status field empty for record " . $this->record_id);
             // Check if the logic is set to true
             $status = REDCap::evaluateLogic($this->logic, $this->project_id, $this->record_id, $this->event_id,
                 $this->repeat_instance, $this->repeat_instrument);
@@ -172,12 +178,14 @@ class RewardInstance
      */
     function processReward() {
 
+        // if campaigns are being used, find the campaignID from the name given in the config file.
         if ($this->useCampaign) {
             $status = $this->retrieveCampaignID();
         }
 
+        // If a campaign is not being used and no GC brands have been give, we can't process this config.
         if ((!empty($this->brandIds) and (!$this->useCampaign)) or
-                (($this->useCampaign) and (!empty($this->campaignId)))) {
+            (($this->useCampaign) and (!empty($this->campaignId)))) {
             // Create an Order and send to Tremendous
             [$status, $message] = $this->createOrder();
             $this->module->emDebug("Status: " . $status . ", message: " . $message);
@@ -186,12 +194,15 @@ class RewardInstance
             $status = false;
         }
 
+        // Update this record to store the status of the request
         $this->updateRecord($status, $message);
 
     }
 
     /**
-     * Look up which brands are available for this Campaign
+     * Retrieve the campaign ID from the campaign name listed in the config file.  This will
+     * set the brands that are available to choose from and also mark this reward as part of
+     * a campaign for reporting purposes in Tremendous.
      *
      * @return bool
      */
@@ -199,13 +210,13 @@ class RewardInstance
 
         $this->campaignId = '';
         // Retrieve the list of campaigns and return the one that matches our campaign name
-
         $header = array(
             "Authorization" => "Bearer " . $this->apiToken,
             "Content-type" => "application/json"
         );
 
-        [$status, $response] = $this->sendAPIGet($this->listCampaigns, $header);
+        // Retrieve list of campaigns so we can find ID
+        [$status, $response] = $this->sendAPIGet($this->listCampaignsURN, $header);
         if ($status) {
             $campaigns = json_decode($response, true);
 
@@ -227,17 +238,19 @@ class RewardInstance
      */
     function createOrder() {
 
+        // In order for the request to be successful, you must specify if you want
+        // to send reward in email or text and you must send a name with it.
         if (!empty($this->communication) and !empty($this->name)) {
 
             // Setup the communication pathway
             $communicationType = strtolower($this->whichCommunication);
-            // If a name was entered, add it to the request. Name is required
+            // If a name was entered, add it to the request (email or phone). Name is required
             $recipient = array(
                 "$communicationType"    => $this->communication,
                 "name"                  => $this->name
             );
 
-            // Put together the request
+            // Put together the rest of the request
             $rewards = array(
                 "pid" => $this->project_id,
                 "reward_name" => $this->title,
@@ -259,7 +272,6 @@ class RewardInstance
                 $rewards["products"] = $this->brandIds;
             }
 
-
             $body = array(
                 "payment" => array("funding_source_id" => $this->fundingSource),
                 "rewards" => array($rewards)
@@ -272,6 +284,7 @@ class RewardInstance
                 "Content-type" => "application/json"
             );
 
+            // Make the request to Tremendous
             [$status, $message] = $this->sendAPIPost($this->createOrderURN, $header, $body);
             if ($status) {
                 // Retrieve the order id so we can store it in the REDCap record
@@ -304,7 +317,7 @@ class RewardInstance
      */
     function sendAPIPost(string $urn, array $header, array $body) {
 
-        $this->module->emDebug("In sendAPIPost");
+
         $message = "Error when requesting GC";
         // Create new client
         $client = new \GuzzleHttp\Client([
@@ -337,7 +350,7 @@ class RewardInstance
                 $status = false;
             }
 
-        // Catch exceptions
+            // Catch exceptions
         } catch (TransferException $ex) {
             $this->module->emError("Transfer Exception occurred when requesting gc order.");
             $status = false;
@@ -362,16 +375,10 @@ class RewardInstance
      * @param string[] $header
      *
      * @return (array|bool|mixed)[]
-     *
-     * @psalm-param array{Authorization: string, 'Content-type': 'application/json'} $header
-     *
-     * @psalm-return array{0: bool, 1: array<empty, empty>|mixed}
      */
     function sendAPIGet(string $urn, array $header): array {
 
         $this->module->emDebug("In sendAPIGet: total URL " . $this->tremendous_url . $urn);
-        $response = "Error when performing GET";
-        $returnData = array();
         // Create new client
         $client = new \GuzzleHttp\Client([
                 'timeout' => 30,
@@ -382,6 +389,7 @@ class RewardInstance
         );
 
         //  Send GET request
+        $returnData = array();
         try {
             $response = $client->get($this->tremendous_url . $urn,
                 [
